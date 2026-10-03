@@ -126,25 +126,46 @@ Ordinary self-hosted builds do not need this secret. Preserve your environment's
 
 Prerequisites: a Linux VPS with Docker Engine and the Compose plugin, host Nginx, and a DNS record for `catdoku.vier99.de` pointing to the server. Do not commit server addresses, credentials, or secrets.
 
-Use `/opt/apps/catdoku` as the application directory:
+This project is designed to slot into an existing `/opt/apps/docker-compose.yml` that already starts the other applications on the server.
+
+Clone the repository next to your other application directories:
 
 ```bash
-sudo mkdir -p /opt/apps
-sudo chown "$USER":"$USER" /opt/apps
-cd /opt/apps
+sudo mkdir -p /opt
+sudo chown "$USER":"$USER" /opt
+cd /opt
 git clone https://github.com/duplys/catdoku.git
-cd catdoku
-docker compose up -d --build
-curl -I http://127.0.0.1:3002/
 ```
 
 Because this repository is private, use your own authorized Git credentials on the server; do not place tokens in clone URLs or configuration files committed to Git.
 
-Create `/etc/nginx/sites-available/catdoku` on the **host**:
+Add a `catdoku` service to `/opt/apps/docker-compose.yml` (do not remove the existing `aipico` or `defrag` services):
+
+```yaml
+catdoku:
+  build:
+    context: /opt/catdoku
+  container_name: catdoku
+  restart: unless-stopped
+  ports:
+    - '127.0.0.1:3002:80'
+```
+
+Then build and start it from `/opt/apps`:
+
+```bash
+cd /opt/apps
+docker compose up -d --build
+curl -I http://127.0.0.1:3002/
+```
+
+Add the following server block to `/etc/nginx/sites-available/vier99.de` on the **host**, alongside the existing `aipico`, `defrag`, and `tycho` blocks:
 
 ```nginx
+# Catdoku
 server {
     listen 80;
+    listen [::]:80;
     server_name catdoku.vier99.de;
 
     location / {
@@ -157,10 +178,9 @@ server {
 }
 ```
 
-Enable and check it:
+Because `/etc/nginx/sites-available/vier99.de` is already linked from `sites-enabled`, just validate and reload Nginx:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/catdoku /etc/nginx/sites-enabled/catdoku
 sudo nginx -t
 sudo systemctl reload nginx
 ```
@@ -176,7 +196,16 @@ sudo certbot renew --dry-run
 
 Permit ports 80 and 443 in the host/cloud firewall, keep port 3002 bound to localhost, and ensure automatic certificate renewal is enabled. The app container does not handle TLS or reverse proxying.
 
-For updates, pull the desired reviewed revision in `/opt/apps/catdoku` and run `docker compose up -d --build`. Keep a known-good Git revision for rollback and rebuild that revision if needed.
+For updates, pull the desired reviewed revision in `/opt/catdoku`, then rebuild from `/opt/apps`:
+
+```bash
+cd /opt/catdoku
+git pull
+cd /opt/apps
+docker compose up -d --build
+```
+
+Keep a known-good Git revision for rollback and rebuild that revision if needed.
 
 ## Privacy and independence
 
