@@ -136,8 +136,8 @@ h2 {
   aspect-ratio: 1;
   background: var(--region-color);
   border: 0;
-  border-top: 1px solid #263d3520;
-  border-left: 1px solid #263d3520;
+  border-top: 1px solid #263d3559;
+  border-left: 1px solid #263d3559;
   color: #263d35;
   -webkit-tap-highlight-color: transparent;
 }
